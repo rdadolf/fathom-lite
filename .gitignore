@@ -1,0 +1,9 @@
+*.pyc
+.*.swp
+.DS_Store
+__pycache__/*
+.pytest_cache/
+
+deploy/
+build/
+dist/
