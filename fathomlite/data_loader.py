@@ -37,3 +37,23 @@ class DataLoader(object):
     if 'arr_0' not in npz_data:
       raise KeyError('No "arr_0" element in data file "'+str(os.path.normpath(path))+'". Are you sure this file is Fathom-lite data?')
     return npz_data['arr_0']
+
+class Batcher(object):
+  def __init__(self, data):
+    self._data = data # must be numpy array
+    self._n = len(data) # size of first dimension
+    self._off = 0 # current offset
+
+  def next_batch(self, batch_size):
+    if batch_size>self._n:
+      raise IndexError('Batch size ('+str(batch_size)+') must not be longer than dataset ('+str(self._n)+'.')
+    if self._off+batch_size<self._n:
+      b = self._data[self._off:self._off+batch_size]
+      self._off += batch_size
+      return b
+    else:
+      b0 = self._data[self._off:]
+      self._off = batch_size - (self._n-self._off)
+      b1 = self._data[:self._off]
+      return np.concatenate((b0,b1))
+

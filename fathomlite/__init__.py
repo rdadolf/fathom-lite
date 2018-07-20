@@ -9,11 +9,13 @@ else:
   Config.load(filepath)
 del filepath
 
+from data_loader import DataLoader,Batcher
+
 #from deepq import *
 #from speech import *
 #from seq2seq import *
 from .autoenc import Autoenc, AutoencFwd
 #from memnet import *
-#from alexnet import *
+from alexnet import *
 #from vgg import *
 #from residual import *

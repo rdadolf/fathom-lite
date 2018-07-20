@@ -1,5 +1,5 @@
+import numpy as np
 import pytest
-import unittest
 
 import fathomlite as fl
 
@@ -14,7 +14,7 @@ def config_fix():
   yield
 
 @pytest.mark.parametrize('modelname',
-  ['Autoenc'])
+  ['Autoenc', 'AlexNet'])
  # ['Seq2Seq','MemNet','Speech','Autoenc','Residual','VGG','AlexNet','DeepQ'])
 class TestInstantiation(object):
 

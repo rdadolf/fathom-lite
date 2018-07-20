@@ -1,28 +1,12 @@
 #!/usr/bin/env python
 
+from itertools import cycle
+
 import tensorflow as tf
 
 from ..nn import NeuralNetworkModel, default_runstep
 from ..dataset import Dataset
-from ..imagenet.image_processing import distorted_inputs
-
-# TODO: don't hard-code this
-imagenet_record_dir = '/data/ILSVRC2012/imagenet-tfrecord/'
-
-class Imagenet(Dataset):
-  """Design from TensorFlow Inception example."""
-  def __init__(self, subset, record_dir=imagenet_record_dir):
-    super(Imagenet, self).__init__(subset, record_dir)
-
-  def num_classes(self):
-    return 1000
-
-  def num_examples_per_epoch(self):
-    # Bounding box data consists of 615299 bounding boxes for 544546 images.
-    if self.subset == 'train':
-      return 1281167
-    if self.subset == 'validation':
-      return 50000
+from ..data_loader import DataLoader, Batcher
 
 class ImagenetModel(NeuralNetworkModel):
   @property
@@ -47,16 +31,11 @@ class ImagenetModel(NeuralNetworkModel):
 
   def build_inputs(self):
     with self.G.as_default():
-      # TODO: configure image_size in image_processing.py
       self.image_size = 224 # side of the square image
       self.channels = 3
       self.n_input = self.image_size * self.image_size * self.channels
 
       self.images = tf.placeholder(tf.float32, [None, self.image_size, self.image_size, self.channels])
-
-      # add queue runners (evaluation dequeues records)
-      self.dataset = Imagenet('train')
-      self.batch_images_queue, self.batch_labels_queue = distorted_inputs(self.dataset, batch_size=self.batch_size)
 
   def build_labels(self):
     with self.G.as_default():
@@ -98,23 +77,21 @@ class ImagenetModel(NeuralNetworkModel):
     return self.train_op
 
   def load_data(self):
+    dl = DataLoader('/data')
+    self.image_data = dl.load('imagenet-inputs')
+    self.label_data = dl.load('imagenet-labels')
     # Grab the dataset from the internet, if necessary
-    self.num_batches_per_epoch = self.dataset.num_examples_per_epoch() / self.batch_size
+    #self.num_batches_per_epoch = self.dataset.num_examples_per_epoch() / self.batch_size
 
   def run(self, runstep=default_runstep, n_steps=1):
     self.load_data()
 
+    image_batcher = Batcher(self.image_data)
+    label_batcher = Batcher(self.label_data)
     with self.G.as_default():
-      # Keep training until reach max iterations
-      step = 1
-      while step * self.batch_size < self.training_iters:
-        if step > n_steps:
-          return
-
-        # TODO: switch to test
-        batch_images, batch_labels = self.session.run([self.batch_images_queue, self.batch_labels_queue])
-
-        print("Queued ImageNet batch.")
+      for step in xrange(0,n_steps):
+        batch_images = image_batcher.next_batch(self.batch_size)
+        batch_labels = label_batcher.next_batch(self.batch_size)
 
         if not self.forward_only:
           _, loss_value, acc = runstep(
