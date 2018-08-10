@@ -14,6 +14,9 @@ DATA_FILES=[
   'mnist-labels.npz',
   'imagenet-inputs.npz',
   'imagenet-labels.npz',
+  'babi-stories.npz',
+  'babi-questions.npz',
+  'babi-answers.npz',
 ]
   
 
