@@ -8,7 +8,7 @@ install:
 
 script:
   - cd data && ./download.py && cd ..
-  - pytest
+  - python -m pytest
 
 notifications:
   email:
