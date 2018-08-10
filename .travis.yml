@@ -1,5 +1,9 @@
 language: python
 
+cache:
+  - pip
+  - data/
+
 python:
   - "2.7"
 
