@@ -1,2 +1,3 @@
-pytest
+TensorFlow==1.7
+pytest>=3
 sklearn
