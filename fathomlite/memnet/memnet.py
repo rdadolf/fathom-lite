@@ -7,12 +7,13 @@ import tensorflow as tf
 import numpy as np
 from sklearn import cross_validation
 from ..nn import NeuralNetworkModel, default_runstep
-from data_utils import load_task, vectorize_data
-
-data_dir = "/data/babi/tasks_1-20_v1-2/en/"
-task_id = 1
+from ..data_loader import DataLoader, Batcher, one_hot_encode
 
 class MemNet(NeuralNetworkModel):
+  memory_size = 50
+  sentence_size = 6
+  vocab_size = 20
+
   def build_inference(self, inputs):
     with self.G.as_default():
       self.encoding_op = tf.constant(self.encoding(self.sentence_size, self.embedding_size), name="encoding")
@@ -103,45 +104,22 @@ class MemNet(NeuralNetworkModel):
     return self.train_op
 
   def load_data(self):
-    # single babi task
-    # TODO: refactor all this running elsewhere
-    # task data
-    train, test = load_task(data_dir, task_id)
+    dl = DataLoader('/data')
+    self.data_S = dl.load('babi-stories')
+    self.data_Q = dl.load('babi-questions')
+    self.data_A = dl.load('babi-answers')
 
-    vocab = sorted(reduce(lambda x, y: x | y, (set(list(chain.from_iterable(s)) + q + a) for s, q, a in train + test)))
-    word_idx = dict((c, i + 1) for i, c in enumerate(vocab))
+    assert self.sentence_size == self.data_Q.shape[1], 'Sentence size ('+str(self.sentence_size)+') in data does not match internal constant ('+str(self.data_Q.shape[1])+').'
+    assert self.vocab_size == np.max(self.data_S) + 1, 'Vocabulary size ('+str(self.vocab_size)+') in data does not match internal constant ('+str(np.max(self.data_S)+1)+').'
 
-    self.memory_size = 50
+    # Pad out data to memory size
+    padding_length = self.memory_size - self.data_S.shape[1]
+    self.data_S = np.pad(self.data_S,
+                         ((0,0),(0,padding_length),(0,0)),
+                         'constant') # default pad value is 0
 
-    self.max_story_size = max(map(len, (s for s, _, _ in train + test)))
-    self.mean_story_size = int(np.mean(map(len, (s for s, _, _ in train + test))))
-    self.sentence_size = max(map(len, chain.from_iterable(s for s, _, _ in train + test)))
-    self.query_size = max(map(len, (q for _, q, _ in train + test)))
-    self.memory_size = min(self.memory_size, self.max_story_size)
-    self.vocab_size = len(word_idx) + 1 # +1 for nil word
-    self.sentence_size = max(self.query_size, self.sentence_size) # for the position
-
-    print("Longest sentence length", self.sentence_size)
-    print("Longest story length", self.max_story_size)
-    print("Average story length", self.mean_story_size)
-
-    # train/validation/test sets
-    self.S, self.Q, self.A = vectorize_data(train, word_idx, self.sentence_size, self.memory_size)
-    self.trainS, self.valS, self.trainQ, self.valQ, self.trainA, self.valA = cross_validation.train_test_split(self.S, self.Q, self.A, test_size=.1) # TODO: randomstate
-    self.testS, self.testQ, self.testA = vectorize_data(test, word_idx, self.sentence_size, self.memory_size)
-
-    print(self.testS[0])
-
-    print("Training set shape", self.trainS.shape)
-
-    # params
-    self.n_train = self.trainS.shape[0]
-    self.n_test = self.testS.shape[0]
-    self.n_val = self.valS.shape[0]
-
-    print("Training Size", self.n_train)
-    print("Validation Size", self.n_val)
-    print("Testing Size", self.n_test)
+    # One-hot encode answers
+    self.data_A = one_hot_encode(self.data_A, max_value=self.vocab_size)
 
   def build_hyperparameters(self):
     with self.G.as_default():
@@ -159,8 +137,6 @@ class MemNet(NeuralNetworkModel):
       self.display_step = 10
 
   def build_inputs(self):
-    self.load_data() # TODO: get static numbers for the things that currently require loading and move this to run
-
     with self.G.as_default():
       # inputs
       self.stories = tf.placeholder(tf.int32, [None, self.memory_size, self.sentence_size], name="stories")
@@ -180,25 +156,21 @@ class MemNet(NeuralNetworkModel):
   def labels(self):
     return self.answers
 
-  def run(self, runstep=None, n_steps=1):
-    # load babi data
-    # vocab, memory, sentence sizes set here
-    # TODO: get static data size numbers and don't load in inputs anymore
-    #self.load_data()
-    #tf.set_random_seed(random_state)
+  def run(self, runstep=default_runstep, n_steps=1):
+    self.load_data()
 
-    start = 0
-    assert self.batch_size<self.n_train, 'Batch size is larger than training data---something is horribly wrong'
-    end = self.batch_size
+    s_batcher = Batcher(self.data_S)
+    q_batcher = Batcher(self.data_Q)
+    a_batcher = Batcher(self.data_A)
+
     for _ in range(1, n_steps+1):
-      s = self.trainS[start:end]
-      q = self.trainQ[start:end]
-      a = self.trainA[start:end]
+      s = s_batcher.next_batch(self.batch_size)
+      q = q_batcher.next_batch(self.batch_size)
+      a = a_batcher.next_batch(self.batch_size)
 
       feed = {self.stories: s, self.queries: q, self.answers: a}
 
       if not self.forward_only:
-        # Fit training using batch data
         _, _, _ = runstep(
             self.session,
             [self.train, self.loss, self.accuracy],
@@ -210,19 +182,6 @@ class MemNet(NeuralNetworkModel):
             self.outputs,
             feed_dict=feed,
         )
-
-      # FIXME: Should really be shuffling here.
-      if end+self.batch_size>self.n_train:
-        start,end = 0,self.batch_size
-      else:
-        start,end = end,end+self.batch_size
-
-    acc = self.session.run(
-        self.accuracy,
-        feed_dict={self.stories: self.testS, self.queries: self.testQ, self.answers: self.testA}
-    )
-
-    print("Test accuracy: {:.5f}".format(acc))
 
 def position_encoding(sentence_size, embedding_size):
   """

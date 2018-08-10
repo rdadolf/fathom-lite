@@ -38,6 +38,13 @@ class DataLoader(object):
       raise KeyError('No "arr_0" element in data file "'+str(os.path.normpath(path))+'". Are you sure this file is Fathom-lite data?')
     return npz_data['arr_0']
 
+def one_hot_encode(np_array, max_value=None):
+  if max_value is None:
+    max_value = np.max(np_array+1)
+  i = np.eye(max_value)
+  onehot_array = i[np_array]
+  return onehot_array
+
 class Batcher(object):
   def __init__(self, data):
     self._data = data # must be numpy array

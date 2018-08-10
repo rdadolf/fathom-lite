@@ -19,6 +19,9 @@ def config_fix():
     ['mnist-labels',(1000,)],
     ['imagenet-inputs',(1000,224,224,3)],
     ['imagenet-labels',(1000,)],
+    ['babi-stories',(1000,10,6)],
+    ['babi-questions',(1000,6)],
+    ['babi-answers',(1000,)],
   ])
 class TestDatasets(object):
   def test_loadshapes(self, dataset, shape):

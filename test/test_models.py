@@ -14,7 +14,7 @@ def config_fix():
   yield
 
 @pytest.mark.parametrize('modelname',
-  ['Autoenc', 'AlexNet'])
+ ['MemNet','Autoenc','Residual','VGG','AlexNet'])
  # ['Seq2Seq','MemNet','Speech','Autoenc','Residual','VGG','AlexNet','DeepQ'])
 class TestInstantiation(object):
 
@@ -32,9 +32,11 @@ class TestInstantiation(object):
     Model,ModelFwd = self._models(modelname)
     for m in [Model(), ModelFwd()]:
       m.setup()
+      m.teardown()
 
   def test_run(self, config_fix, modelname):
     Model,ModelFwd = self._models(modelname)
     for m in [Model(), ModelFwd()]:
       m.setup()
       m.run()
+      m.teardown()
