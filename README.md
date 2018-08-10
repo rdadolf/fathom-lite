@@ -18,8 +18,8 @@ Dataset   | Dimensions
 ----------|------------------
 MNIST     | 1000 x 784
 ImageNet  | 1000 x 224 x 224 x 3
+bAbI      | 1000 x 10 x 6 + 1000 x 6
 WMT15     | 1000 x (bucket)
-bAbI      | 1000 x 50 ? + 1000 x ?
 ALE       | 1000 x 84 x 84 x 3
 
 
