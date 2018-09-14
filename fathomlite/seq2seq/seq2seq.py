@@ -244,10 +244,10 @@ class Seq2Seq(NeuralNetworkModel):
       self.learning_rate_decay_op = self.learning_rate.assign(self.learning_rate * self.learning_rate_decay_factor)
       self.max_gradient_norm = 5.0
 
-  def run(self, runstep=None, n_steps=1):
-    # Grab the dataset from the internet, if necessary
+  def setup(self):
     self.load_data()
 
+  def run(self, runstep=None, n_steps=1):
     # This is the training loop.
     step_time, loss = 0.0, 0.0
     current_step = 0

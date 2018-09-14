@@ -15,7 +15,7 @@ from data_loader import DataLoader,Batcher
 #from speech import *
 #from seq2seq import *
 from .autoenc import Autoenc, AutoencFwd
-from memnet import *
-from alexnet import *
-from vgg import *
-from residual import *
+from .memnet import MemNet, MemNetFwd
+from .alexnet import AlexNet, AlexNetFwd
+from .vgg import VGG, VGGFwd
+from .residual import Residual, ResidualFwd
