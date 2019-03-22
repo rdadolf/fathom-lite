@@ -5,7 +5,6 @@
 from itertools import chain
 import tensorflow as tf
 import numpy as np
-from sklearn import cross_validation
 from ..nn import NeuralNetworkModel, default_runstep
 from ..data_loader import DataLoader, Batcher, one_hot_encode
 
